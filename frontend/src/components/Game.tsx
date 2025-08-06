@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 
 // Define GameState type
@@ -9,6 +9,8 @@ type GameState = {
 const API_BASE_URL = 'http://localhost:8000';
 
 function Game() {
+  const gameboardRef = useRef<HTMLDivElement>(null);
+  const victoryRef = useRef<HTMLDivElement>(null);
   const [gameState, setGameState] = useState<GameState>({
     A: [],
     B: [],
@@ -24,7 +26,6 @@ function Game() {
   const [startTime, setStartTime] = useState<number | null>(null);
   const [elapsedTime, setElapsedTime] = useState<number>(0);
 
-  // Map round to disk count
   const getDisksForRound = (round: number): number => {
     switch (round) {
       case 1: return 3;
@@ -34,12 +35,11 @@ function Game() {
     }
   };
 
-  // Check if game is won (all disks on rod C in correct order)
+ 
   const isWon = useCallback((): boolean => {
     const rodC = gameState.C || [];
     if (rodC.length !== numDisks) return false;
     
-    // Check if disks are in correct order [N, N-1, ..., 2, 1]
     for (let i = 0; i < rodC.length; i++) {
       if (rodC[i] !== numDisks - i) return false;
     }
@@ -82,6 +82,14 @@ function Game() {
     setGameStarted(true);
     setStartTime(Date.now());
     setElapsedTime(0);
+    
+    // Scroll to game board after a brief delay to ensure UI updates
+    setTimeout(() => {
+      gameboardRef.current?.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      });
+    }, 100);
   };
 
   // Start next round
@@ -137,7 +145,7 @@ function Game() {
 
   // Initialize game on component mount
   useEffect(() => {
-    // Always initialize the game with Easy difficulty (3 disks) on first load
+
     resetGame(1);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -155,6 +163,18 @@ function Game() {
       if (interval) clearInterval(interval);
     };
   }, [startTime, gameStarted, isWon]);
+
+  // Auto-scroll to victory banner when user wins
+  useEffect(() => {
+    if (isWon() && victoryRef.current) {
+      setTimeout(() => {
+        victoryRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }, 500); // Delay to allow victory banner animation to complete
+    }
+  }, [isWon]);
 
   // Render a single disk
   const renderDisk = (diskSize: number) => {
@@ -203,130 +223,145 @@ function Game() {
   };
 
   return (
-    <div className="py-6">
-      <div className="flex items-center justify-center gap-5 mb-4">
-        <h1 className="text-3xl font-bold text-foreground">Tower of Hanoi</h1>
-        <button 
-          onClick={() => setShowModal(true)}
-          className="btn btn-secondary"
-        >
-          How to Play
-        </button>
-      </div>
-      <h2 className="text-xl font-semibold text-center mb-4">Round {currentRound} - {numDisks} Disks</h2>
-      
-      {/* Timer Display */}
-      <div className="timer-display">
-        Time: {elapsedTime}s
-      </div>
+    <div className="py-6 relative z-0">
+      {/* Main Game UI Container with Backdrop Blur */}
+      <div className="backdrop-blur-md bg-black/30 rounded-2xl p-8 mx-4 my-6 border border-white/20 shadow-2xl relative z-0">
+        <div className="flex items-center justify-center gap-5 mb-4">
+          <h1 className="text-3xl font-bold text-white drop-shadow-lg">Tower of Hanoi</h1>
+          <button 
+            onClick={() => setShowModal(true)}
+            className="btn btn-secondary backdrop-blur-sm bg-white/10 border border-white/20 text-white hover:bg-white/20"
+          >
+            How to Play
+          </button>
+        </div>
+        <h2 className="text-xl font-semibold text-center mb-4 text-white drop-shadow-md">Round {currentRound} - {numDisks} Disks</h2>
+        
+        {/* Timer Display */}
+        <div className="timer-display text-teal-100">
+          Time: {elapsedTime}s
+        </div>
 
-      {/* Difficulty Selector */}
-      <div className="difficulty-selector">
-        <h3 className="text-lg font-semibold text-gray-700 mb-4">Select Difficulty:</h3>
-        <div className="difficulty-buttons">
-          <button 
-            onClick={() => resetGame(1)}
-            className={`btn min-w-36 ${currentRound === 1 ? 'btn-success' : 'btn-outline'}`}
-          >
-            Easy (3 disks)
-          </button>
-          <button 
-            onClick={() => resetGame(2)}
-            className={`btn min-w-36 ${currentRound === 2 ? 'btn-warning' : 'btn-outline'}`}
-          >
-            Medium (5 disks)
-          </button>
-          <button 
-            onClick={() => resetGame(3)}
-            className={`btn min-w-36 ${currentRound === 3 ? 'btn-danger' : 'btn-outline'}`}
-          >
-            Hard (8 disks)
-          </button>
+        {/* Difficulty Selector */}
+        <div className="difficulty-selector">
+          <h3 className="text-lg font-semibold mb-4 text-white drop-shadow-md">Select Difficulty:</h3>
+          <div className="difficulty-buttons">
+            <button 
+              onClick={() => resetGame(1)}
+              className={`btn min-w-36 backdrop-blur-sm border border-white/20 ${
+                currentRound === 1 
+                  ? 'bg-green-500/80 text-white hover:bg-green-600/80' 
+                  : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
+            >
+              Easy (3 disks)
+            </button>
+            <button 
+              onClick={() => resetGame(2)}
+              className={`btn min-w-36 backdrop-blur-sm border border-white/20 ${
+                currentRound === 2 
+                  ? 'bg-yellow-500/80 text-white hover:bg-yellow-600/80' 
+                  : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
+            >
+              Medium (5 disks)
+            </button>
+            <button 
+              onClick={() => resetGame(3)}
+              className={`btn min-w-36 backdrop-blur-sm border border-white/20 ${
+                currentRound === 3 
+                  ? 'bg-red-500/80 text-white hover:bg-red-600/80' 
+                  : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
+            >
+              Hard (8 disks)
+            </button>
+          </div>
         </div>
-      </div>
-      
-      {isWon() && (
-        <div className="victory-banner animate-slide-up">
-          🎉 You Won Round {currentRound}! 🎉
-          {currentRound < 3 ? (
-            <div className="mt-4">
-              <button 
-                onClick={startNextRound}
-                className="btn btn-success"
-              >
-                Start Round {currentRound + 1}
-              </button>
-            </div>
-          ) : (
-            <div className="mt-4 text-base">
-              🏆 All rounds complete! You're a Tower of Hanoi master! 🏆
-            </div>
-          )}
-        </div>
-      )}
-      
-      <div className="text-center mb-6 space-y-3">
-        {!gameStarted && (
-          <button 
-            onClick={startGame}
-            className="btn btn-success text-lg px-8 py-3"
-          >
-            🚀 Start Game
-          </button>
+        
+        {isWon() && (
+          <div ref={victoryRef} className="victory-banner animate-slide-up backdrop-blur-sm bg-green-500/20 border border-green-400/30 text-black shadow-2xl">
+            🎉 You Won Round {currentRound}! 🎉
+            {currentRound < 3 ? (
+              <div className="mt-4">
+                <button 
+                  onClick={startNextRound}
+                  className="btn bg-green-500/80 text-white hover:bg-green-600/80 backdrop-blur-sm border border-green-400/30"
+                >
+                  Start Round {currentRound + 1}
+                </button>
+              </div>
+            ) : (
+              <div className="mt-4 text-base">
+                🏆 All rounds complete! You're a Tower of Hanoi master! 🏆
+              </div>
+            )}
+          </div>
         )}
-        <div>
-          <button 
-            onClick={() => resetGame()} 
-            className="btn btn-default"
-          >
-            Reset Round {currentRound} ({numDisks} disks)
-          </button>
+        
+        <div className="text-center mb-6 space-y-3">
+          {!gameStarted && (
+            <button 
+              onClick={startGame}
+              className="btn text-lg px-8 py-3 bg-blue-500/80 text-white hover:bg-blue-600/80 backdrop-blur-sm border border-blue-400/30 shadow-lg"
+            >
+              🚀 Start Game
+            </button>
+          )}
+          <div>
+            <button 
+              onClick={() => resetGame()} 
+              className="btn bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm border border-white/20"
+            >
+              Reset Round {currentRound} ({numDisks} disks)
+            </button>
+          </div>
         </div>
-      </div>
-      
-      {errorMessage && (
-        <div className="alert alert-error animate-fade-in">
-          <strong>Error:</strong> {errorMessage}
-        </div>
-      )}
-      
-      {fromRod && (
-        <div className="alert alert-info animate-fade-in">
-          <strong>Step 2:</strong> Selected rod {fromRod}. Click destination rod to move the top disk.
-        </div>
-      )}
-      
-      {!fromRod && !errorMessage && gameStarted && (
-        <div className="alert alert-info animate-fade-in">
-          <strong>Step 1:</strong> Click on a rod with disks to select it as the source.
-        </div>
-      )}
+        
+        {errorMessage && (
+          <div className="alert alert-error animate-fade-in backdrop-blur-sm bg-red-500/20 border border-red-400/30 text-white shadow-lg">
+            <strong>Error:</strong> {errorMessage}
+          </div>
+        )}
+        
+        {fromRod && (
+          <div className="alert alert-info animate-fade-in backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-white shadow-lg">
+            <strong>Step 2:</strong> Selected rod {fromRod}. Click destination rod to move the top disk.
+          </div>
+        )}
+        
+        {!fromRod && !errorMessage && gameStarted && (
+          <div className="alert alert-info animate-fade-in backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-white shadow-lg">
+            <strong>Step 1:</strong> Click on a rod with disks to select it as the source.
+          </div>
+        )}
 
-      {!gameStarted && !errorMessage && !showHowToPlay && (
-        <div className="alert alert-info animate-fade-in">
-          <strong>Ready to play!</strong> Click "Start Game" to begin the timer and start moving disks.
+        {!gameStarted && !errorMessage && !showHowToPlay && (
+          <div className="alert alert-info animate-fade-in backdrop-blur-sm bg-blue-500/20 border border-blue-400/30 text-white shadow-lg">
+            <strong>Ready to play!</strong> Click "Start Game" to begin the timer and start moving disks.
+          </div>
+        )}
+        
+        {/* Game board */}
+        <div ref={gameboardRef} className="game-board">
+          {renderRod('A')}
+          {renderRod('B')}
+          {renderRod('C')}
         </div>
-      )}
-      
-      {/* Game board */}
-      <div className="game-board">
-        {renderRod('A')}
-        {renderRod('B')}
-        {renderRod('C')}
-      </div>
-      
-      <div className="mt-8 text-xs opacity-70">
-        <h3 className="font-semibold mb-2">Game State (Debug):</h3>
-        <pre className="text-left bg-gray-100 p-3 rounded-lg text-xs overflow-x-auto">
-          {JSON.stringify(gameState, null, 2)}
-        </pre>
+        
+        <div className="mt-8 text-xs opacity-70">
+          <h3 className="font-semibold mb-2 text-white">Game State (Debug):</h3>
+          <pre className="text-left p-3 rounded-lg text-xs overflow-x-auto backdrop-blur-sm bg-white/10 border border-white/20 text-white">
+            {JSON.stringify(gameState, null, 2)}
+          </pre>
+        </div>
       </div>
 
       {/* Initial How to Play Modal - shows on first load */}
       {showHowToPlay && (
-        <div className="modal-backdrop animate-fade-in">
-          <div className="modal-content animate-slide-up">
-            <h2 className="text-2xl font-bold mb-6 text-foreground">🎮 Welcome to Tower of Hanoi!</h2>
+        <div className="modal-backdrop animate-fade-in backdrop-blur-md bg-black/50">
+          <div className="modal-content animate-slide-up backdrop-blur-sm bg-white/95 border border-white/30 shadow-2xl">
+            <h2 className="text-2xl font-bold mb-6 text-gray-800">🎮 Welcome to Tower of Hanoi!</h2>
             
             <div className="text-left space-y-4">
               <p className="text-lg"><strong>Goal:</strong> Move all disks from Rod A to Rod C</p>
@@ -366,9 +401,9 @@ function Game() {
 
       {/* Regular How to Play Modal */}
       {showModal && (
-        <div className="modal-backdrop animate-fade-in">
-          <div className="modal-content animate-slide-up">
-            <h2 className="text-2xl font-bold mb-6 text-foreground">How to Play</h2>
+        <div className="modal-backdrop animate-fade-in backdrop-blur-md bg-black/50">
+          <div className="modal-content animate-slide-up backdrop-blur-sm bg-white/95 border border-white/30 shadow-2xl">
+            <h2 className="text-2xl font-bold mb-6 text-gray-800">How to Play</h2>
             
             <div className="text-left space-y-4">
               <p><strong>Goal:</strong> Move all disks from Rod A to Rod C in the correct order (largest at bottom, smallest at top).</p>
